@@ -337,9 +337,12 @@ class RegisterView(generics.CreateAPIView):
         login(self.request, user)
 
 
-class RequestChangeClassView(generics.UpdateAPIView):
+class DeleteClassUserView(generics.DestroyAPIView):
     authentication_classes = (CsrfExemptSessionAuthentication,)
-
+    queryset = ClassUser.objects.all()
+    serializer_class = UserClassSerializer
+    permission_classes = [IsAdmin]
+    
 
 class ApproveChangeClassView(generics.UpdateAPIView):
     authentication_classes = (CsrfExemptSessionAuthentication,)
