@@ -11,12 +11,11 @@ class LoginSerializer(serializers.Serializer):
 
     def validate(self, attrs):
         user = authenticate(username=attrs['email'], password=attrs['password'])
-
         if not user:
-            raise serializers.ValidationError('Incorrect email or password.')
+            raise serializers.ValidationError('Email hoặc mật khẩu không đúng')
 
         if not user.is_active:
-            raise serializers.ValidationError('User is disabled.')
+            raise serializers.ValidationError('Đang chờ phê duyệt')
 
         return {'user': user}
 
@@ -73,7 +72,7 @@ class UserSerializer(serializers.ModelSerializer):
             'joined_at',
             'password',
             'is_staff',
-            'usrclass',
+            'roleid',
             'usrfullname',
             'usrdob',
             'usrfaculty'
@@ -151,3 +150,26 @@ class PredictSerializer(ModelSerializer):
         model = Predict
         fields = '__all__'
         read_only_fields = ('accuracy','details','outputpath',)
+
+class RequestToClassSerializer(serializers.Serializer):
+    
+    id_class = serializers.IntegerField(required=True)
+
+
+class ApproveToClassSerializer(serializers.Serializer):
+    
+    id_user_class = serializers.IntegerField(required=True)
+    status = serializers.IntegerField(required=True)
+
+
+class DisableAccountSerializer(serializers.Serializer):
+    
+    status = serializers.IntegerField(required=True)
+class UserClassSerializer(ModelSerializer):
+    class Meta:
+        model = ClassUser
+        fields = '__all__'
+
+class ConfirmUserSerializer(serializers.Serializer):
+    id_user =serializers.IntegerField(required=True)
+    status = serializers.BooleanField(required=True)

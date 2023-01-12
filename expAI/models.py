@@ -20,7 +20,7 @@ class UserManager(BaseUserManager):
             email=self.normalize_email(email),
             is_staff=is_staff,
 
-            is_active=True,
+            is_active=False,
             is_superuser=is_superuser,
             last_login=now,
             joined_at=now,
@@ -35,7 +35,7 @@ class UserManager(BaseUserManager):
 
     def create_user(self, email, password, **extra_fields):
         role = Roles.objects.get(rolename="STUDENT")
-        return self._create_user(email, password, is_superuser= False, is_staff=False, roleid = role, **extra_fields)
+        return self._create_user(email, password, is_superuser= False, is_staff=False,  **extra_fields)
 
     def create_superuser(self, email, password, **extra_fields):
         return self._create_user(email, password, True, True, **extra_fields)
@@ -48,7 +48,6 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_active = models.BooleanField('Is active', default=True)
     joined_at = models.DateTimeField('Joined at', default=timezone.now)
     roleid = models.ForeignKey('roles', models.DO_NOTHING, db_column='roleid', blank=True, null=True)
-    usrclass = models.ManyToManyField('class', db_column='usrclass', blank=True, null=True)
     usrfullname = models.CharField(db_column='usrFullName', max_length=50  , blank=True, null=True)  # Field name made lowercase.
     usrdob = models.DateField(db_column='usrDoB', blank=True, null=True)  # Field name made lowercase.
     usrfaculty = models.CharField(db_column='usrFaculty', max_length=45, blank=True, null=True)  # Field name made lowercase.
@@ -252,3 +251,13 @@ class TypePermission(models.Model):
         managed = True
         db_table="TypePermission"
 
+class ClassUser(models.Model):
+    class_user_id = models.AutoField(db_column="classUserID", primary_key=True)
+    class_id = models.ForeignKey("Class", models.DO_NOTHING, db_column="classid", blank=True, null=True )
+    user_id = models.ForeignKey("User", models.DO_NOTHING, db_column="ID", blank=True, null=True)
+    status = models.IntegerField(db_column='status', blank=True, null=True)
+    time_regis = models.DateTimeField('register time', default=timezone.now)
+    time_approve = models.DateTimeField('approve time', default=timezone.now)
+    class Meta:
+        managed = True
+        db_table="ClassUser"
