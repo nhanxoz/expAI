@@ -152,18 +152,22 @@ class PredictSerializer(ModelSerializer):
         read_only_fields = ('accuracy','details','outputpath',)
 
 class RequestToClassSerializer(serializers.Serializer):
-    
+
+    id_class = serializers.IntegerField(required=True)
+
+class AssignToClassSerializer(serializers.Serializer):
+    id_user = serializers.IntegerField(required=True)
     id_class = serializers.IntegerField(required=True)
 
 
 class ApproveToClassSerializer(serializers.Serializer):
-    
+
     id_user_class = serializers.IntegerField(required=True)
     status = serializers.IntegerField(required=True)
 
 
 class DisableAccountSerializer(serializers.Serializer):
-    
+
     status = serializers.IntegerField(required=True)
 class UserClassSerializer(ModelSerializer):
     class Meta:

@@ -30,7 +30,7 @@ router.register(r'experiment',views.ExperimentsViewSet, basename="LK")
 router.register(r'datasets',views.DatasetsViewSet, basename="LK")
 router.register(r'models',views.ModelsViewSet, basename="LK")
 router.register(r'classes',views.ClassesViewSet, basename="LK")
-
+router.register(r'classuser',views.DeleteClassUserView, basename="expai")
 # The API URLs are now determined automatically by the router.
 urlpatterns = [
     path('', include(router.urls)),
@@ -40,7 +40,7 @@ urlpatterns = [
     re_path(r'^logout/$', views.LogoutView.as_view(), name='user-logout', ),
     re_path(r'^my-infor/$', views.UserView.as_view(), name='user-current'),
     re_path(r'^change-password/$', views.ChangePasswordView.as_view(), name='change-password'),
-    re_path(r'^delete-class-user/$', views.DeleteClassUserView.as_view(), name='change-password'),
+    re_path(r'^assign-teacher/$', views.AssignTeacherToClassView.as_view(), name='change-password'),
     re_path(r'^list-class-user/$', views.GetAllClassUserView.as_view(), name='change-password'),
     re_path(r'^disable-account/$', views.DisableAccountView.as_view(), name='disable-account'),
     re_path(r'^request-to-class/$', views.RequestToClassView.as_view(), name='disable-account'),
@@ -50,5 +50,5 @@ urlpatterns = [
     re_path(r'^upload-datasets-zip/$', views.DatasetsUploadView.as_view(), name='c'),
     re_path(r'^upload-file/$', views.FileUploadView.as_view(), name='c'),
     re_path(r'^upload-files/$', views.FilesUploadView.as_view(), name='c'),
-    
+
 ]

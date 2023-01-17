@@ -78,7 +78,7 @@ class DatasetsViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         usr = self.request.user
         usr = User.objects.get(email=usr.email)
-        
+
         a = ClassUser.objects.filter(status=1).filter(user_id=usr.id)
         b = list(a.values_list('class_id', flat=True))
         c = sum([list(ClassUser.objects.filter(status=1).filter(
@@ -91,7 +91,7 @@ class DatasetsViewSet(viewsets.ModelViewSet):
             queryset = Datasets.objects.filter(
                 datasettype=1) | Datasets.objects.filter(datasetowner=self.request.user)
         else:  # teacher
-            
+
             queryset = Datasets.objects.filter(
                 datasettype=1) | Datasets.objects.filter(datasetowner__in=d)
         datasetname = self.request.query_params.get('datasetname')
@@ -224,7 +224,7 @@ class RequestToClassView(generics.CreateAPIView):
     authentication_classes = (CsrfExemptSessionAuthentication,)
     def get_object(self, queryset=None):
         obj = self.request.user
-        
+
         return obj
 
     def post(self, request):
@@ -244,7 +244,7 @@ class RequestToClassView(generics.CreateAPIView):
 
 class AssignTeacherToClassView(generics.CreateAPIView):
     queryset = ClassUser.objects.all()
-    serializer_class = RequestToClassSerializer
+    serializer_class = AssignToClassSerializer
     authentication_classes = (CsrfExemptSessionAuthentication,)
     def check_more_than_one(self, class_id):
         a=set(ClassUser.objects.filter(status=1).filter(class_id=class_id).values_list("user_id",flat=True))
@@ -296,7 +296,7 @@ class ApproveUserRequestView(generics.UpdateAPIView):
     authentication_classes = (CsrfExemptSessionAuthentication,)
     def update(self, request):
         obj = User.objects.get(id= self.request.data.get('id_user'))
-        
+
         obj.is_active = self.request.data.get('status')
         obj.save()
         return Response({"result": "Success"})
@@ -337,12 +337,12 @@ class RegisterView(generics.CreateAPIView):
         login(self.request, user)
 
 
-class DeleteClassUserView(generics.DestroyAPIView):
+class DeleteClassUserView(viewsets.ModelViewSet):
     authentication_classes = (CsrfExemptSessionAuthentication,)
     queryset = ClassUser.objects.all()
     serializer_class = UserClassSerializer
     permission_classes = [IsAdmin]
-    
+
 
 class ApproveChangeClassView(generics.UpdateAPIView):
     authentication_classes = (CsrfExemptSessionAuthentication,)
