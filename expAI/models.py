@@ -51,6 +51,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     usrfullname = models.CharField(db_column='usrFullName', max_length=50  , blank=True, null=True)  # Field name made lowercase.
     usrdob = models.DateField(db_column='usrDoB', blank=True, null=True)  # Field name made lowercase.
     usrfaculty = models.CharField(db_column='usrFaculty', max_length=45, blank=True, null=True)  # Field name made lowercase.
+    chose_class = models.BooleanField('User chose class', default= False)
     objects = UserManager()
 
     USERNAME_FIELD = 'email'

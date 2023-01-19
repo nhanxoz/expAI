@@ -34,7 +34,7 @@ class ChangeNameSerializer(serializers.Serializer):
     """
     Serializer for password change endpoint.
     """
-    password = serializers.CharField(required=True)
+    # password = serializers.CharField(required=True)
     name = serializers.CharField(required=True)
     # usrclass = serializers.ListField(required=True)
     usrfullname = serializers.CharField(required=True)
@@ -75,9 +75,10 @@ class UserSerializer(serializers.ModelSerializer):
             'roleid',
             'usrfullname',
             'usrdob',
-            'usrfaculty'
+            'usrfaculty',
+            'chose_class'
         )
-        read_only_fields = ( 'is_staff','last_login', 'is_active', 'joined_at')
+        read_only_fields = ( 'is_staff','last_login', 'is_active', 'joined_at','chose_class')
         extra_kwargs = {
             'password': {'required': True, 'write_only': True},
             'name': {'required': True}
@@ -173,6 +174,12 @@ class UserClassSerializer(ModelSerializer):
     class Meta:
         model = ClassUser
         fields = '__all__'
+class UserClass2Serializer(ModelSerializer):
+    class Meta:
+        model = ClassUser
+        fields = '__all__'
+        depth = 1
+
 
 class ConfirmUserSerializer(serializers.Serializer):
     id_user =serializers.IntegerField(required=True)

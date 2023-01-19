@@ -284,12 +284,15 @@ class ApproveToClassView(generics.UpdateAPIView):
         obj.time_approve = datetime.datetime.today()
         obj.status = 1
         obj.save()
+        obj2 = obj.user_id
+        obj2.chose_class = True
+        obj2.save()
         return Response({"result": "Success"})
 
 class GetAllClassUserView(generics.ListAPIView):
     authentication_classes = (CsrfExemptSessionAuthentication,)
     queryset = ClassUser.objects.all()
-    serializer_class = UserClassSerializer
+    serializer_class = UserClass2Serializer
 class ApproveUserRequestView(generics.UpdateAPIView):
     queryset = User.objects.all()
     serializer_class = ConfirmUserSerializer
@@ -342,7 +345,17 @@ class DeleteClassUserView(viewsets.ModelViewSet):
     queryset = ClassUser.objects.all()
     serializer_class = UserClassSerializer
     permission_classes = [IsAdmin]
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        if (instance.status == True):
+            obj =instance.user_id
+            obj.chose_class = False
+            obj.save()
+        self.perform_destroy(instance)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
+    def perform_destroy(self, instance):
+        instance.delete()
 
 class ApproveChangeClassView(generics.UpdateAPIView):
     authentication_classes = (CsrfExemptSessionAuthentication,)
@@ -405,8 +418,8 @@ class ChangeNameView(generics.UpdateAPIView):
 
         if serializer.is_valid():
             # Check password
-            if not self.object.check_password(serializer.data.get("password")):
-                return Response({"password": ["Wrong password."]}, status=status.HTTP_400_BAD_REQUEST)
+            # if not self.object.check_password(serializer.data.get("password")):
+            #     return Response({"password": ["Wrong password."]}, status=status.HTTP_400_BAD_REQUEST)
             # set_password also hashes the password that the user will get
             self.object.name = serializer.data.get("name")
             # self.object.usrclass.set(serializer.data.get("usrclass"))
