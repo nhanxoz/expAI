@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     'expAI.apps.expAIConfig', # register your apps
     'drf_yasg', # swagger
     'django_filters',
+    'django_rest_passwordreset',
 ]
 
 MIDDLEWARE = [
@@ -180,3 +181,9 @@ CORS_ALLOWED_ORIGINS = [
 ] # If this is used, then not need to use `CORS_ALLOW_ALL_ORIGINS = True`
 
 AUTH_USER_MODEL = 'expAI.User'
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_USE_TLS = True
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_HOST_USER = 'aiexperimentbe@gmail.com'
+EMAIL_HOST_PASSWORD = 'iefkhdrpxgxkmdpf'
+EMAIL_PORT = 587

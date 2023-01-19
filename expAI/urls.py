@@ -34,6 +34,7 @@ router.register(r'classuser',views.DeleteClassUserView, basename="expai")
 # The API URLs are now determined automatically by the router.
 urlpatterns = [
     path('', include(router.urls)),
+    path('api/password_reset/', include('django_rest_passwordreset.urls', namespace='password_reset')),
     re_path(r'^swagger/$', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
         re_path(r'^register/$', views.RegisterView.as_view(), name='user-register'),
     re_path(r'^login/$', views.LoginView.as_view(), name='user-login'),
