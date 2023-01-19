@@ -59,6 +59,40 @@ class ChangePassword2Serializer(serializers.Serializer):
 
 
 
+class User2Serializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = User
+        fields = (
+            'id',
+            'last_login',
+            'email',
+            'name',
+            'is_active',
+            'joined_at',
+            
+            'is_staff',
+            'roleid',
+            'usrfullname',
+            'usrdob',
+            'usrfaculty',
+            'chose_class'
+        )
+        read_only_fields = ( 'is_staff','last_login', 'is_active', 'joined_at','chose_class')
+        extra_kwargs = {
+            'name': {'required': True}
+        }
+
+    # @staticmethod
+    # def validate_email(value):
+    #     return validate_username(value)
+
+    def create(self, validated_data):
+        return User.objects.create_user(
+                    validated_data.pop('email'),
+                    validated_data.pop('password'),
+                    **validated_data
+                )
 class UserSerializer(serializers.ModelSerializer):
 
     class Meta:

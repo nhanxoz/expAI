@@ -150,7 +150,7 @@ class AccountsViewSet(viewsets.ModelViewSet):
     # permission_classes = (IsAdmin,)
     queryset = User.objects.all()
     pagination_class = LargeResultsSetPagination
-    serializer_class = UserSerializer
+    serializer_class = User2Serializer
     filter_backends = [filters.SearchFilter]
     search_fields = ['email', 'name']
     authentication_classes = (CsrfExemptSessionAuthentication,)
@@ -165,7 +165,7 @@ class AccountsViewSet(viewsets.ModelViewSet):
         )
         partial = kwargs.pop('partial', False)
         instance = self.get_object()
-        request.data["password"] = make_password(request.data["password"])
+        # request.data["password"] = make_password(request.data["password"])
         serializer = self.get_serializer(
             instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
