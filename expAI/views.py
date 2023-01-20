@@ -41,7 +41,7 @@ class expAIViewSet(viewsets.ModelViewSet):
     """
     queryset = Softwarelibs.objects.all()
     serializer_class = SoftwareLibsSerializer
-
+    authentication_classes = (CsrfExemptSessionAuthentication,)
 
 @method_decorator(name="list", decorator=swagger_auto_schema(manual_parameters=[openapi.Parameter('datasetName', openapi.IN_QUERY, description='Tên bộ dữ liệu', type=openapi.TYPE_STRING), openapi.Parameter('datasetSumFrom', openapi.IN_QUERY, description='Cận dưới số lượng', type=openapi.TYPE_INTEGER),
                                                                                 openapi.Parameter(
