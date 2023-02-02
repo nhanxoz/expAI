@@ -1048,7 +1048,17 @@ class ModelsUploadView(views.APIView):
         }
         return Response(response)
 
-
+class Model_trainedViewSet(viewsets.ModelViewSet):
+    queryset = Model_trained.objects.all()
+    serializer_class = Model_trainedSerializer
+    #permission_classes = [IsStudent | IsTeacher]
+    authentication_classes = (CsrfExemptSessionAuthentication,)
+    
+    def get_serializer_class(self):
+        if self.action == "create":
+            return Creat_Model_trainedSerializer
+        return Model_trainedSerializer
+    
 class FileUploadView(views.APIView):
 
     parser_classes = [FormParser, MultiPartParser]

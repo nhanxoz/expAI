@@ -168,9 +168,17 @@ class ModelsSerializer(ModelSerializer):
         model = Models
         fields = '__all__'
 
+class Model_trainedSerializer(ModelSerializer):
+    class Meta:
+        model = Model_trained
+        depth = 1
+        fields = '__all__'
 
-
-
+class Creat_Model_trainedSerializer(ModelSerializer):
+    class Meta:
+        model = Model_trained
+        fields = '__all__'
+        
 class TrainningresultsSerializer(ModelSerializer):
     class Meta:
         model = Trainningresults

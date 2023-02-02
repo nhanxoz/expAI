@@ -133,7 +133,17 @@ class Models(models.Model):
         managed = True
         db_table = 'models'
 
-
+class Model_trained(models.Model):
+    model_trainedid = models.AutoField(db_column='model_trainedID', primary_key=True)  # Field name made lowercase.
+    modelid = models.ForeignKey('Models', models.SET_NULL, db_column='modelID', blank=True, null=True)  # Field name made lowercase.
+    model_trainedcreatorid = models.ForeignKey('User', models.CASCADE, db_column='model_trainedCreatorID', blank=True, null=True)  # Field name made lowercase.
+    model_trainedconfigid = models.ForeignKey('Paramsconfigs', models.SET_NULL, db_column='model_trainedConfigID', blank=True, null=True)  # Field name made lowercase.
+    model_trainedcreatedtime = models.DateTimeField(db_column='model_trainedCreatedTime', blank=True, null=True)  # Field name made lowercase.
+    
+    class Meta:
+        managed = True
+        db_table="Model_trained"
+        
 class Objectembeddings(models.Model):
     objid = models.OneToOneField('Objects', models.DO_NOTHING, db_column='objID', primary_key=True)  # Field name made lowercase.
     expid = models.ForeignKey(Experiments, models.DO_NOTHING, db_column='expID')  # Field name made lowercase.
