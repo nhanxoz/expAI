@@ -139,6 +139,7 @@ class Model_trained(models.Model):
     model_trainedcreatorid = models.ForeignKey('User', models.CASCADE, db_column='model_trainedCreatorID', blank=True, null=True)  # Field name made lowercase.
     model_trainedconfigid = models.ForeignKey('Paramsconfigs', models.SET_NULL, db_column='model_trainedConfigID', blank=True, null=True)  # Field name made lowercase.
     model_trainedcreatedtime = models.DateTimeField(db_column='model_trainedCreatedTime', blank=True, null=True)  # Field name made lowercase.
+    model_trainedexpid = models.ForeignKey('Experiments', models.CASCADE, db_column='model_trainedExpID', blank=True, null=True)  # Field name made lowercase.
     
     class Meta:
         managed = True
