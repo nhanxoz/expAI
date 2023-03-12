@@ -52,5 +52,5 @@ urlpatterns = [
     re_path(r'^upload-datasets-zip/$', views.DatasetsUploadView.as_view(), name='c'),
     re_path(r'^upload-file/$', views.FileUploadView.as_view(), name='c'),
     re_path(r'^upload-files/$', views.FilesUploadView.as_view(), name='c'),
-
+    re_path(r'^test-download-files/$', views.DownloadView.as_view(), name='c'),
 ]

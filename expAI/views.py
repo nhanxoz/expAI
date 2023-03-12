@@ -3,6 +3,8 @@ import os
 import datetime
 import uuid
 from rest_framework import viewsets, status
+
+from expAI.utils import gen_report_docx
 from .models import *
 from .serializers import *
 from rest_framework import views, generics, response, permissions, authentication
@@ -77,8 +79,11 @@ class DatasetsViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         usr = self.request.user
-        usr = User.objects.get(email=usr.email)
-
+        try:
+            usr = User.objects.get(email=usr.email)
+        except:
+            print("User not authorized") 
+            return
         a = ClassUser.objects.filter(status=1).filter(user_id=usr.id)
         b = list(a.values_list('class_id', flat=True))
         c = sum([list(ClassUser.objects.filter(status=1).filter(
@@ -604,7 +609,11 @@ class ExperimentsViewSet(viewsets.ModelViewSet):
         if request.user.id == None:
             return Response(status=status.HTTP_401_UNAUTHORIZED)
         usr = self.request.user
-        usr = User.objects.get(email=usr.email)
+        try:
+            usr = User.objects.get(email=usr.email)
+        except:
+            print("User not authorized")
+            return
         a = ClassUser.objects.filter(status=1).filter(user_id=usr.id)
         b = list(a.values_list('class_id', flat=True))
         c = sum([list(ClassUser.objects.filter(status=1).filter(
@@ -945,6 +954,46 @@ class ExperimentsViewSet(viewsets.ModelViewSet):
 
         return Response(list_serializer.data, status=status.HTTP_200_OK)
 
+from django.http import FileResponse
+from django.views import View
+
+class DownloadView(views.APIView):
+    configID = openapi.Parameter(
+        'configID', openapi.IN_QUERY, description='id cua bang paramsconfig', type=openapi.TYPE_NUMBER)
+    @swagger_auto_schema(
+        operation_id='Download docx',
+        operation_description='Download docx',
+        operation_summary="Download docx",
+        manual_parameters=[configID],
+        tags=['experiment']
+    )
+    def get(self, request, *args, **kwargs):
+        # Replace 'path/to/file' with the actual path to the file you want to serve.
+        
+        configID = request.query_params.get('configID')
+        config = Paramsconfigs.objects.values('configexpid__expname',
+                                              'configexpid__expcreatedtime',
+                                              'jsonstringparams',
+                                              'configexpid__expid',
+                                              'configexpid__expcreatorid__name',
+                                              'configexpid__expdatasetid__datasetname',
+                                              'configexpid__expmodelid').get(configid=configID)
+        trainresult = Trainningresults.objects.filter(configid=configID).values('trainresultindex', 'lossvalue', 'accuracy')
+        testingresult = Results.objects.values('resultaccuracy', 'resulttestingdataset__datasetname').get(resultconfigid=configID)
+        # print(trainresult)
+        # Open the file and create a response object with its contents.
+        file = gen_report_docx(expName=config['configexpid__expname'], expID=config['configexpid__expid'], expCreator=config['configexpid__expcreatorid__name'],
+                    expCreatedTime=config['configexpid__expcreatedtime'], 
+                    dataset=config['configexpid__expdatasetid__datasetname'],
+                      test_dataset_name=testingresult['resulttestingdataset__datasetname'], 
+                      test_dataset_acc=testingresult['resultaccuracy'], trainresult = trainresult)
+        response = FileResponse(file)
+
+        # Set the content type and content disposition headers for the response.
+        response['Content-Type'] = 'application/octet-stream'
+        response['Content-Disposition'] = 'attachment; filename="report.docx"'
+
+        return response
 
 class DatasetsUploadView(views.APIView):
     parser_classes = [FormParser, MultiPartParser]
