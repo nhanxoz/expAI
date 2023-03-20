@@ -24,6 +24,9 @@ from django.utils.decorators import method_decorator
 from rest_framework.parsers import FileUploadParser, FormParser, MultiPartParser
 from rest_framework.parsers import FileUploadParser, FormParser, MultiPartParser
 from .AI import *
+from .AI_models.Pytorch_Retinaface import Retina_mnet
+from .AI_models.Pytorch_FaceNet import FaceNet
+from .AI_models.Tensorflow_FightDetecttion import fightdetection
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 # Create your views here.
@@ -688,12 +691,34 @@ class ExperimentsViewSet(viewsets.ModelViewSet):
             paramsconfigs.save()
             exp.save()
             id_params = paramsconfigs.pk
+            dataset = Datasets.objects.get(pk = exp.expdatasetid.pk)
+
+
 
             # --------------------
             # thread
             import threading
-            t = threading.Thread(target=trainning_process,
-                                 args=(id_params,), kwargs={})
+            _model = Models.objects.get(pk = exp.expmodelid.pk)
+            print("------------------------------")
+            print(_model.modelname)
+            if int(_model.modelid) == 1:
+                t = threading.Thread(target=Retina_mnet.train,
+                                    args=(id_params,dataset.datasetfolderurl,paramsconfigs_json), kwargs={})
+            elif int(_model.modelid) == 2:
+                t = threading.Thread(target=Retina_mnet.train,
+                    args=(id_params,dataset.datasetfolderurl,paramsconfigs_json), kwargs={})
+            elif int(_model.modelid) == 3:
+                t = threading.Thread(target=FaceNet.train,
+                    args=(id_params,dataset.datasetfolderurl,paramsconfigs_json), kwargs={})
+            
+            elif int(_model.modelid) == 4:
+                t = threading.Thread(target=fightdetection.train,
+                    args=(id_params,dataset.datasetfolderurl,paramsconfigs_json), kwargs={})
+            else:
+                return JsonResponse({
+                'message': 'Mô hình không hợp lệ! '
+                 }, status=status.HTTP_400_BAD_REQUEST)
+                
             t.setDaemon(True)
             t.start()
             # --------------------
@@ -733,14 +758,17 @@ class ExperimentsViewSet(viewsets.ModelViewSet):
         user = request.user
         user = User.objects.get(id=user.pk)
 
-        id_exp = request.query_params.get('id_exp')
+        # id_exp = request.query_params.get('id_exp')
         id_paramsconfigs = request.query_params.get('id_paramsconfigs')
 
-        exp = Experiments.objects.get(expid=id_exp)
-        exp.expstatus = 2
+        # exp = Experiments.objects.get(expid=id_exp)
+        # exp.expstatus = 2
         paramsconfigs = Paramsconfigs.objects.get(configid=id_paramsconfigs)
         paramsconfigs.trainningstatus = 0
         paramsconfigs.save()
+        exp = paramsconfigs.configexpid
+        exp.expstatus = 2
+        exp.save()
         _results = Trainningresults.objects.filter(
             configid=paramsconfigs).order_by('trainresultid').last()
         serializer = TrainningresultsSerializer(_results, many=False)
@@ -834,10 +862,27 @@ class ExperimentsViewSet(viewsets.ModelViewSet):
         _result.resultconfigid = _paramsconfigs
         _result.resulttestingdataset = _dataset
         _result.save()
+        resultId = int(_result.pk)
+
         #----------------------------------- thread
         import threading
-        t = threading.Thread(target=testing_process,
-                             args=(_result.pk,), kwargs={})
+        _model = Models.objects.get(pk = _exp.expmodelid.pk)
+        if int(_model.modelid) == 1:
+            t = threading.Thread(target=Retina_mnet.test,
+                args=(resultId,_dataset.datasetfolderurl), kwargs={})
+        elif int(_model.modelid) == 2:
+            t = threading.Thread(target=Retina_mnet.test,
+                args=(resultId,_dataset.datasetfolderurl), kwargs={})
+        elif int(_model.modelid) == 3:
+            t = threading.Thread(target=FaceNet.test,
+                args=(resultId,_dataset.datasetfolderurl), kwargs={})
+        elif int(_model.modelid) == 4:
+            t = threading.Thread(target=fightdetection.test,
+                args=(resultId,_dataset.datasetfolderurl), kwargs={})
+        else:
+            return JsonResponse({
+                'message': 'ID model k hợp lệ !'
+            }, status=status.HTTP_400_BAD_REQUEST)
         t.setDaemon(True)
         t.start()
         # -------------------------------------------------------------------
@@ -879,7 +924,8 @@ class ExperimentsViewSet(viewsets.ModelViewSet):
         id_paramsconfigs = request.query_params.get('id_paramsconfigs')
 
         _para = Paramsconfigs.objects.get(pk=id_paramsconfigs)
-        _exp = _para.configexpid
+
+        _exp = Experiments.objects.get(pk = _para.configexpid.pk)
         _exp.expstatus = 4
         _exp.save()
         _predict = Predict()
@@ -891,8 +937,24 @@ class ExperimentsViewSet(viewsets.ModelViewSet):
         _predict.save()
 
         import threading
-        t = threading.Thread(target=predict_process,
-                             args=(_predict.pk,), kwargs={})
+        trained_model = str(_para.configaftertrainmodelpath)
+        _model = Models.objects.get(pk = _exp.expmodelid.pk)
+        if int(_model.modelid) == 1:
+            t = threading.Thread(target=Retina_mnet.predict,
+                                args=(_predict.pk,trained_model), kwargs={})
+        elif int(_model.modelid) == 2:
+            t = threading.Thread(target=Retina_mnet.predict,
+                args=(_predict.pk,trained_model), kwargs={})
+        elif int(_model.modelid) == 3:
+            t = threading.Thread(target=FaceNet.predict,
+                args=(_predict.pk,trained_model), kwargs={})
+        elif int(_model.modelid) == 4:
+            t = threading.Thread(target=fightdetection.predict,
+                args=(_predict.pk,trained_model), kwargs={})
+        else:
+            return JsonResponse({
+                'message': 'Có một số lỗi với chuỗi json được nhập!'
+            }, status=status.HTTP_400_BAD_REQUEST)
         t.setDaemon(True)
         t.start()
 
@@ -1166,96 +1228,3 @@ class FilesUploadView(views.APIView):
             'data': path
         }
         return Response(response)
-
-
-# fuctions for thread
-
-def trainning_process(para_id):
-    import time
-    print("train started")
-    print(para_id)
-    for i in range(1, 10):
-        time.sleep(10)
-        _para = Paramsconfigs.objects.get(pk=para_id)
-        if _para.trainningstatus == 0:
-            _new_result = Trainningresults()
-            _new_result.configid = _para
-            _new_result.accuracy = i
-            _new_result.lossvalue = 100-1
-            _new_result.trainresultindex = i
-            _new_result.is_last = True
-            _new_result.save()
-            return
-
-        else:
-            _new_result = Trainningresults()
-            _new_result.configid = _para
-            _new_result.accuracy = i
-            _new_result.lossvalue = 100-1
-            _new_result.trainresultindex = i
-            _new_result.is_last = False
-            _new_result.save()
-    _para = Paramsconfigs.objects.get(pk=id)
-    _para.trainningstatus = 0
-    _para.save()
-
-    print("train finished")
-
-    return
-
-
-def testing_process(result_id):
-    import time
-    print("test started")
-    print(result_id)
-    _result = Results.objects.get(pk=result_id)
-    _result.resultaccuracy = 0.98
-    _result.resultdetail = '/somethings.txt'
-    # time.sleep(20)
-    _result.save()
-    print("test finished")
-
-
-def predict_process(pre_id):
-    import time
-    import cv2
-    print("test started")
-    print(pre_id)
-
-    _pre = Predict.objects.get(pk=pre_id)
-
-    # result_path = str(_pre.inputpath)[:9] + 'predict_result' + str(_pre.inputpath)[21:]
-    # if not os.path.exists(result_path):
-    #     os.makedirs(result_path)
-
-    # if _pre.datatype == 'image':
-    #     for filename in os.listdir(str(_pre.inputpath)):
-    #         img = cv2.imread(os.path.join(str(_pre.inputpath),filename))
-    #         if img is not None:
-    #             img = cv2.flip(img,0)
-    #             cv2.imwrite(os.path.join(result_path,filename),img)
-    #     # _pre.outputpath = result_path
-    #     # _pre.save()
-    # elif _pre.datatype == 'video':
-    #     # _pre.outputpath = result_path
-    #     # _pre.save()
-    #     return
-    #     # for filename in os.listdir(str(_pre.inputpath)):
-    #     #     video = cv2.VideoCapture(os.path.join(str(_pre.inputpath),filename))
-    #     #     if video.isOpened() == False:
-    #     #         _pre.details = "Error reading video file"
-    #     #         return
-    #     #     frame_width = int(video.get(3))
-    #     #     frame_height = int(video.get(4))
-
-    #     #     size = (frame_width, frame_height)
-    #     #     result = cv2.VideoWriter(os.path.join(result_path,filename),
-    #     #                  cv2.VideoWriter_fourcc(*'MJPG'),
-    #     #                  10, size)
-
-    _pre.accuracy = 0.98
-    _pre.details = '/somethings.txt'
-    _pre.outputpath = _pre.inputpath
-    # time.sleep(20)
-    _pre.save()
-    print("test finished")
