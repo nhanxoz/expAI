@@ -3,7 +3,7 @@ import os
 import datetime
 import uuid
 from rest_framework import viewsets, status
-
+from django.db.models import Count
 from expAI.utils import gen_report_docx
 from .models import *
 from .serializers import *
@@ -119,8 +119,8 @@ class DatasetsViewSet(viewsets.ModelViewSet):
             datasetname__icontains=datasetname) if datasetname != None else queryset
         return queryset
 
-    def perform_create(self, serializer):
-        serializer.save(datasetowner=self.request.user)
+    # def perform_create(self, serializer):
+    #     serializer.save(datasetowner=self.request.user)
 
     def destroy(self, request, *args, **kwargs):
         try:
@@ -146,7 +146,7 @@ class ClassesViewSet(viewsets.ModelViewSet):
     queryset = Class.objects.all()
     pagination_class = LargeResultsSetPagination
     serializer_class = ClassesSerializer
-
+    authentication_classes = (CsrfExemptSessionAuthentication,)
 
 class AccountsViewSet(viewsets.ModelViewSet):
     """
@@ -162,11 +162,20 @@ class AccountsViewSet(viewsets.ModelViewSet):
     filter_backends = [filters.SearchFilter]
     search_fields = ['email', 'name']
     authentication_classes = (CsrfExemptSessionAuthentication,)
-
+    def get_serializer_class(self):
+        if self.request.method == 'POST':
+            return UserCreateSerializer
+        return User2Serializer
     def perform_destroy(self, instance):
         instance.is_active = False
         instance.save()
-
+    def get_userclass_classname(self, user_id):
+        classuser = ClassUser.objects.filter(user_id=user_id, status=1).first()
+        if classuser:
+            classname = classuser.class_id.classname
+        else:
+            classname = None
+        return classname
     def update(self, request, *args, **kwargs):
         from django.contrib.auth.hashers import (
             make_password,
@@ -185,8 +194,47 @@ class AccountsViewSet(viewsets.ModelViewSet):
             instance._prefetched_objects_cache = {}
 
         return Response(serializer.data)
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance)
+        classname = self.get_userclass_classname(instance.id)
+        if classname:
+            serializer.data['usrclass'] = classname
+        return Response(serializer.data)
 
+    # Override the list method to include userclass classname in the response
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            response_data = serializer.data
+            for user_data in response_data:
+                user_id = user_data['id']
+                classname = self.get_userclass_classname(user_id)
+                user_data['usrclass'] = classname
+            return self.get_paginated_response(response_data)
 
+        serializer = self.get_serializer(queryset, many=True)
+        response_data = serializer.data
+        for user_data in response_data:
+            user_id = user_data['id']
+            classname = self.get_userclass_classname(user_id)
+            user_data['usrclass'] = classname
+        return Response(response_data)
+class ThongkeRole(generics.RetrieveAPIView):
+    queryset= User.objects.all()
+    serializer_class= ThongkeRole
+    def get(self,request):
+        roles = self.queryset.values('roleid').annotate(count=Count('roleid'))
+        
+        name_role=["admin","giaovien", "hocvien"]
+        role_counts = {}
+        for role in roles:
+            if role['roleid'] == None: continue
+            role_counts[name_role[int(role['roleid'])-1]] = role['count']
+
+        return Response(role_counts)
 class ChangeUserPasswordView(generics.UpdateAPIView):
     queryset = User.objects.all()
     serializer_class = ChangePassword2Serializer
@@ -239,13 +287,17 @@ class RequestToClassView(generics.CreateAPIView):
         """
         Change User's Password API
         """
+        usr = User.objects.get(id=self.request.data.get('id_user'))
         class_user = ClassUser(
-            user_id=self.get_object(),
+            user_id=User.objects.get(id=self.request.data.get('id_user')),
             class_id = Class.objects.get(classid=self.request.data.get('id_class')),
             status = 0,
             time_regis = datetime.datetime.today().strftime('%Y-%m-%d'),
             time_approve = '2000-10-22',
         )
+        usr.chose_class=True
+        print(usr.chose_class, usr.email)
+        usr.save()
         class_user.save()
         return Response({"result": "Success"})
 
@@ -288,19 +340,36 @@ class ApproveToClassView(generics.UpdateAPIView):
     def update(self, request):
         obj = ClassUser.objects.get(class_user_id= self.request.data.get('id_user_class'))
         if not self.check_more_than_one(obj.user_id):
-            return Response({"result": "Student already had class"})
+            return Response({"result": "Học viên đẫ ở trong lớp"})
         obj.time_approve = datetime.datetime.today()
         obj.status = 1
         obj.save()
         obj2 = obj.user_id
+        obj2.usrclass = obj.class_id.classname
+
         obj2.chose_class = True
         obj2.save()
+        return Response({"result": "Success"})
+class DenyToClassView(generics.UpdateAPIView):
+    authentication_classes = (CsrfExemptSessionAuthentication,)
+    queryset = ClassUser.objects.all()
+    serializer_class = DenyToClassSerializer
+
+
+    def update(self, request):
+        obj = ClassUser.objects.get(class_user_id= self.request.data.get('id_user_class'))
+        
+        obj.time_approve = datetime.datetime.today()
+        obj.status = 2
+        obj.save()
+
         return Response({"result": "Success"})
 
 class GetAllClassUserView(generics.ListAPIView):
     authentication_classes = (CsrfExemptSessionAuthentication,)
     queryset = ClassUser.objects.all()
     serializer_class = UserClass2Serializer
+    pagination_class = LargeResultsSetPagination
 class ApproveUserRequestView(generics.UpdateAPIView):
     queryset = User.objects.all()
     serializer_class = ConfirmUserSerializer
@@ -353,6 +422,61 @@ class DeleteClassUserView(viewsets.ModelViewSet):
     queryset = ClassUser.objects.all()
     serializer_class = UserClassSerializer
     permission_classes = [IsAdmin]
+    filterset_fields = ['user_id','class_id', 'status','user_id__roleid__rolename']
+    def get_serializer_class(self):
+        if self.action == 'list':  # use the list serializer for list action
+            return ClassUserSerializer
+        return super().get_serializer_class()
+    def get_queryset(self):
+        if self.action == 'list':
+            return ClassUser.objects.filter(status=1)
+        return super().get_queryset()
+class DeleteClassUserView(viewsets.ModelViewSet):
+    authentication_classes = (CsrfExemptSessionAuthentication,)
+    queryset = ClassUser.objects.all()
+    serializer_class = UserClassSerializer
+    permission_classes = [IsAdmin]
+    pagination_class = LargeResultsSetPagination
+    def check_more_than_one(self, class_id):
+        a=set(ClassUser.objects.filter(status=1).filter(class_id=class_id).values_list("user_id",flat=True))
+        if len(User.objects.filter(is_active=1).filter(id__in=a))>0:
+            return False
+        else:
+            return True
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        user_id = request.data.get('user_id')
+        class_id = request.data.get('class_id')
+        print(user_id, class_id)
+        a = set(ClassUser.objects.filter(status=1, class_id=class_id, user_id = user_id))
+        print(a)
+        if len(a)>0:
+            return Response({"message":"Học viên đã ở trong lớp"})
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        usr = User.objects.get(id=user_id)
+        usr.usrClass = Class.objects.get(id=class_id).classname
+        usr.save()
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        user_id = request.data.get('user_id')
+        class_id = request.data.get('class_id')
+        usr = User.objects.get(id=user_id)
+        usr.usrClass = Class.objects.get(id=class_id).classname
+        usr.save()
+        self.perform_update(serializer)
+
+        if getattr(instance, '_prefetched_objects_cache', None):
+            # If 'prefetch_related' has been applied to a queryset, we need to
+            # forcibly invalidate the prefetch cache on the instance.
+            instance._prefetched_objects_cache = {}
+
+        return Response(serializer.data)
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
         if (instance.status == True):
@@ -364,10 +488,59 @@ class DeleteClassUserView(viewsets.ModelViewSet):
 
     def perform_destroy(self, instance):
         instance.delete()
-
+class DanhSachHocVienChuaCoLop(generics.ListAPIView):
+    authentication_classes = (CsrfExemptSessionAuthentication,)
+    pagination_class = LargeResultsSetPagination
+    serializer_class = User2Serializer
+    queryset = User.objects.all()
+    def get_queryset(self):
+        
+        
+        user_have = ClassUser.objects.filter(status=1).values_list('user_id', flat=True).distinct()
+        ids  = User.objects.filter(roleid=3).values_list('id', flat=True).distinct()
+        
+        return User.objects.filter(id__in=list(set(ids) - set(user_have)))
 class ApproveChangeClassView(generics.UpdateAPIView):
     authentication_classes = (CsrfExemptSessionAuthentication,)
+class DanhSachLopGvPhuTrach(generics.ListAPIView):
+    authentication_classes = (CsrfExemptSessionAuthentication,)
+    serializer_class = ClassesSerializer
+    # permission_classes = [IsTeacher, IsAdmin, IsStudent]
+    pagination_class = LargeResultsSetPagination
+    def get_queryset(self):
+        user = self.request.query_params.get('user_id')
+        print(user)
+        class_users = ClassUser.objects.filter(user_id=user, status=1)
+        class_ids = class_users.values_list('class_id', flat=True).distinct()
+        return Class.objects.filter(classid__in=class_ids)
+    user_id = openapi.Parameter(
+    'user_id', openapi.IN_QUERY, description='id cua user', type=openapi.TYPE_NUMBER)
 
+    @swagger_auto_schema(method='get',manual_parameters=[user_id],responses={404: 'Not found', 200:'ok'})
+    @action(methods=['get'], detail=False)
+    def get(self, request, *args, **kwargs):
+        
+        # If a class ID is provided in the URL, return the list of students in the class , user_id__roleid=3
+        class_id = self.kwargs.get('pk')
+        if class_id:
+            class_users = ClassUser.objects.filter(class_id=class_id, status=1)
+            print(class_users)
+            students = [class_user.user_id for class_user in class_users]
+            if None in students: students.remove(None)
+            paginator = self.pagination_class()
+            paginated_queryset = paginator.paginate_queryset(students, request)
+            serializer = UserSerializer(paginated_queryset, many=True)
+            
+            return paginator.get_paginated_response(serializer.data)
+
+        # Otherwise, return the list of classes for the authenticated teacher
+        queryset = self.get_queryset()
+        # Paginate the queryset
+        paginator = self.pagination_class()
+        paginated_queryset = paginator.paginate_queryset(queryset, request)
+        
+        serializer = ClassesSerializer(paginated_queryset, many=True)
+        return paginator.get_paginated_response(serializer.data)
 
 class ChangePasswordView(generics.UpdateAPIView):
     authentication_classes = (CsrfExemptSessionAuthentication,)
@@ -452,9 +625,17 @@ class UserView(generics.RetrieveAPIView):
     serializer_class = UserSerializer
     lookup_field = 'pk'
     authentication_classes = (CsrfExemptSessionAuthentication,)
-
+    def get_userclass_classname(self, user_id):
+        classuser = ClassUser.objects.filter(user_id=user_id, status=1).first()
+        if classuser:
+            classname = classuser.class_id.classname
+        else:
+            classname = None
+        return classname
     def get_object(self, *args, **kwargs):
-        return self.request.user
+        infor = User.objects.get(id=self.request.user.id)
+        infor.usrclass = self.get_userclass_classname(infor.id)
+        return infor
     # # permission_classes = [permissions.IsAuthenticatedOrReadOnly]
     # # permission_classes = [permissions.IsAuthenticatedOrReadOnly,
     # #                       IsOwnerOrReadOnly]
@@ -562,32 +743,155 @@ class ExperimentsViewSet(viewsets.ModelViewSet):
             'message': 'Create a new exp unsuccessful!'
         }, status=status.HTTP_400_BAD_REQUEST)
 
-    # @swagger_auto_schema(method='get',manual_parameters=[],responses={404: 'Not found', 200:'ok', 201:ExperimentsSerializer})
-    # @action(methods=['GET'], detail=False, url_path='get-list-exps')
-    # def get_list_exps(self, request):
-    #     """
-    #     lay ds bai thi nghiem theo id user
-    #     """
-    #     if request.user.id == None:
-    #         return Response(status=status.HTTP_401_UNAUTHORIZED)
-    #     usr = request.user
-    #     usr = User.objects.get( id = usr.pk)
+    @swagger_auto_schema(method='get',manual_parameters=[],responses={404: 'Not found', 200:'ok'})
+    @action(methods=['GET'], detail=False, url_path='get-sum-exps')
+    def get_sum_exps(self, request):
 
-    #     if usr.roleid.rolename=="ADMIN":
-    #         queryset=Experiments.objects.all()
-    #     elif usr.roleid.rolename=="STUDENT":
-    #         queryset  = Experiments.objects.filter(expcreatorid = usr.id)
-    #     else:#giao vien
-    #         usrclass= list(usr.usrclass.all())
-    #         student = [list(i.user_set.all())  for i in usrclass]
-    #         student = sum(student,[])
-    #         queryset = Experiments.objects.filter(expcreatorid__in = student) | Experiments.objects.filter(expcreatorid = usr.id)
+        sum_exp = len(Experiments.objects.all())
+        list_Softwarelibs = Softwarelibs.objects.all()
+        serializer = SoftwareLibsSerializer(list_Softwarelibs, many=True)
+        list_sum_by_sortlib = []
+        for software in list_Softwarelibs:
+            number_exp_of_software = len(Experiments.objects.filter(expsoftwarelibid = software))
+            dict = {}
+            dict['name'] = software.softwarelibname
+            dict['id'] = software.softwarelibid
+            dict['number'] = number_exp_of_software
+            list_sum_by_sortlib.append(dict)
+        
 
-    #     serializer = ExperimentsSerializer(queryset, many=True)
-    #     return Response(serializer.data)
+
+        response = {
+            'status': 'success',
+            'code': status.HTTP_200_OK,
+            'message': 'Data uploaded successfully',
+            'data': {'sum': sum_exp, 'list_sum_by_sortlib': list_sum_by_sortlib }
+        }
+        return Response(response, status=status.HTTP_200_OK)
+    
+
+    id_exp = openapi.Parameter(
+    'id_exp', openapi.IN_QUERY, description='id cua exp', type=openapi.TYPE_NUMBER)
 
     id_softlib = openapi.Parameter(
-        'id_softlib', openapi.IN_QUERY, description='id cua softlib', type=openapi.TYPE_NUMBER)
+    'id_softlib', openapi.IN_QUERY, description='id cua softlib', type=openapi.TYPE_NUMBER)
+    keyword = openapi.Parameter(
+    'keyword', openapi.IN_QUERY, description='keyword tìm kiếm', type=openapi.TYPE_STRING)
+
+    @swagger_auto_schema(method='get', manual_parameters=[id_softlib,keyword], responses={404: 'Not found', 200: 'ok', 201: ExperimentsSerializer})
+    @action(methods=['GET'], detail=False, url_path='search_exp')
+    def search_exp(self, request):
+        id_softlib = request.query_params.get('id_softlib')
+        keyword = request.query_params.get('keyword')
+
+        if request.user.id == None:
+            return Response(status=status.HTTP_401_UNAUTHORIZED)
+        usr = request.user
+        usr = User.objects.get(id=usr.pk)
+        a = ClassUser.objects.filter(status=1).filter(user_id=usr.id)
+        b = list(a.values_list('class_id', flat=True))
+        c = sum([list(ClassUser.objects.filter(status=1).filter(
+            class_id=i).values_list("user_id", flat=True)) for i in b], [])
+        d = User.objects.filter(is_active=1, id__in=c)
+        if usr.roleid.rolename == "ADMIN":
+            if id_softlib != None:
+                queryset = Experiments.objects.filter(expsoftwarelibid = id_softlib,expname__contains = keyword)
+
+            else:
+                queryset = Experiments.objects.filter(expname__contains = keyword)
+        elif usr.roleid.rolename == "STUDENT":
+
+            if id_softlib != None:
+                queryset = Experiments.objects.filter(expcreatorid=usr.id,expsoftwarelibid = id_softlib,expname__contains = keyword)
+            else:
+                queryset = Experiments.objects.filter(expcreatorid=usr.id,expname__contains = keyword)
+        else:  # giao vien
+            usrclass = list(usr.usrclass.all())
+            student = [list(i.user_set.all()) for i in usrclass]
+            student = sum(student, [])
+            if id_softlib != None:
+                queryset = Experiments.objects.filter(
+                    expcreatorid__in=d,expsoftwarelibid = id_softlib,expname__contains = keyword) | Experiments.objects.filter(expcreatorid=usr.id,expsoftwarelibid = id_softlib,expname__contains = keyword)
+            else:
+                                queryset = Experiments.objects.filter(
+                    expcreatorid__in=d,expname__contains = keyword) | Experiments.objects.filter(expcreatorid=usr.id,expname__contains = keyword)
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        serializer = ExperimentsSerializer(queryset, many=True)
+        return Response(serializer.data)
+
+    @swagger_auto_schema(method='get',manual_parameters=[id_exp],responses={404: 'Not found', 200:'ok'})
+    @action(methods=['GET'], detail=False, url_path='get-ranking-by-exp')
+    def get_ranking_by_exp(self, request):
+        id_exp = request.query_params.get('id_exp')
+        _exp = Experiments.objects.get(pk = id_exp)
+
+        list_config = Paramsconfigs.objects.filter(configexpid = _exp)
+        list_train_result = []
+        list_test_result = []
+
+        for config in list_config:
+            result_train = Trainningresults.objects.filter(configid = config,is_last = True).last()
+            result_test = Results.objects.filter(resultconfigid = config).last()
+            if result_train != None and result_test != None :
+                list_test_result.append(result_test.resultaccuracy)
+                list_train_result.append(result_train.accuracy)
+            elif result_train != None:
+                list_test_result.append(result_train.accuracy)
+                list_train_result.append(result_train.accuracy)
+            elif result_test != None:
+                list_test_result.append(result_test.resultaccuracy)
+                list_train_result.append(result_test.resultaccuracy)
+            else:
+                continue
+
+
+            
+
+        return_list = zip(ParamsconfigsSerializer(list_config,many = True).data,list_train_result,list_test_result)
+
+
+
+
+
+        
+
+
+        response = {
+            'status': 'success',
+            'code': status.HTTP_200_OK,
+            'message': 'Data uploaded successfully',
+            'data': {'list_result':  return_list  }
+        }
+        return Response(response, status=status.HTTP_200_OK)
+
+
+    @swagger_auto_schema(method='get',manual_parameters=[],responses={404: 'Not found', 200:'ok'})
+    @action(methods=['GET'], detail=False, url_path='draw-exp-chart')
+    def draw_exp_chart(self, request):
+        _exps = Experiments.objects.all().order_by('expcreatedtime')
+        start = _exps.first()
+        end = _exps.last()
+        return_list = []
+        days = (end.expcreatedtime-start.expcreatedtime).days
+
+        for i in range(0,days+2):
+            cur_time  = start.expcreatedtime +datetime.timedelta(days=i)
+            dict = {}
+            dict['time'] = cur_time.date()
+            dict['count_exp'] = Experiments.objects.filter(expcreatedtime__startswith = cur_time.date()).count()
+            return_list.append(dict)
+
+        response = {
+            'status': 'success',
+            'code': status.HTTP_200_OK,
+            'message': 'Successfully',
+            'data': {'list_result':  return_list  }
+        }
+        return Response(response, status=status.HTTP_200_OK)
+
 
     @swagger_auto_schema(method='get', manual_parameters=[id_softlib], responses={404: 'Not found', 200: 'ok', 201: ModelsSerializer})
     @action(methods=['GET'], detail=False, url_path='get-list-models')
@@ -659,8 +963,7 @@ class ExperimentsViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
     # start - stop train
-    id_exp = openapi.Parameter(
-        'id_exp', openapi.IN_QUERY, description='id cua exp', type=openapi.TYPE_NUMBER)
+
     paramsconfigs_json = openapi.Parameter(
         'paramsconfigs_json', openapi.IN_QUERY, description='json string paramsconfig', type=openapi.TYPE_STRING)
     id_paramsconfigs = openapi.Parameter(

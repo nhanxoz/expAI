@@ -1,1 +1,4 @@
-rest_example_project/setting.py
+.git/objects/pack/*
+weights/72/facenet.pth
+weights/77/model.h5
+expAI/AI_models/Pytorch_Retinaface/weights/Resnet50_Final.pth

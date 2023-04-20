@@ -70,7 +70,7 @@ class User2Serializer(serializers.ModelSerializer):
             'name',
             'is_active',
             'joined_at',
-            
+            'usrclass',
             'is_staff',
             'roleid',
             'usrfullname',
@@ -78,7 +78,7 @@ class User2Serializer(serializers.ModelSerializer):
             'usrfaculty',
             'chose_class'
         )
-        read_only_fields = ( 'is_staff','last_login', 'is_active', 'joined_at','chose_class')
+        read_only_fields = ( 'is_staff','last_login', 'is_active', 'joined_at','chose_class', 'usrclass')
         extra_kwargs = {
             'name': {'required': True}
         }
@@ -93,6 +93,17 @@ class User2Serializer(serializers.ModelSerializer):
                     validated_data.pop('password'),
                     **validated_data
                 )
+class UserCreateSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(write_only=True)
+
+    class Meta:
+        model = User
+        fields = ('email', 'password', 'name', 'roleid', 'usrfullname', 'usrdob', 'usrfaculty', 'chose_class', 'usrclass',)
+
+    def create(self, validated_data):
+        password = validated_data.pop('password')
+        user = User.objects.create_user(password=password, **validated_data)
+        return user
 class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
@@ -107,6 +118,7 @@ class UserSerializer(serializers.ModelSerializer):
             'password',
             'is_staff',
             'roleid',
+            'usrclass',
             'usrfullname',
             'usrdob',
             'usrfaculty',
@@ -148,10 +160,21 @@ class ExperimentsSerializer(ModelSerializer):
 
 
 class DatasetsSerializer(ModelSerializer):
+    datasetowner_name = serializers.ReadOnlyField(source='get_datasetowner_name')
+
     class Meta:
         model = Datasets
-        fields = '__all__'
-        read_only_fields = ('datasetowner',"datasetcreatedtime",)
+        fields = ('datasetid', 'datasetname', 'datasettype', 'datasetsoftID', 'datasetfolderurl', 'datasetsum',
+                  'datasetcreatedtime', 'datasetdescription', 'datasetowner', 'datasetowner_name')
+        read_only_fields = ('datasetowner_name',)
+
+    def create(self, validated_data):
+        datasetowner_id = validated_data.pop('datasetowner_id', None)
+        instance = super().create(validated_data)
+        if datasetowner_id:
+            instance.set_datasetowner_id(datasetowner_id)
+            instance.save()
+        return instance
 class ParamsconfigsSerializer(ModelSerializer):
     class Meta:
         model = Paramsconfigs
@@ -195,9 +218,16 @@ class PredictSerializer(ModelSerializer):
         read_only_fields = ('accuracy','details','outputpath',)
 
 class RequestToClassSerializer(serializers.Serializer):
-
+    id_user = serializers.IntegerField(required=True)
     id_class = serializers.IntegerField(required=True)
+class DenyToClassSerializer(serializers.Serializer):
 
+    id_user_class = serializers.IntegerField(required=True)
+class ThongkeRole(serializers.Serializer):
+
+    admin = serializers.IntegerField()
+    hocvien = serializers.IntegerField()
+    giaovien = serializers.IntegerField()
 class AssignToClassSerializer(serializers.Serializer):
     id_user = serializers.IntegerField(required=True)
     id_class = serializers.IntegerField(required=True)
@@ -221,7 +251,18 @@ class UserClass2Serializer(ModelSerializer):
         model = ClassUser
         fields = '__all__'
         depth = 1
+class ClassUserSerializer(serializers.ModelSerializer):
+    id = serializers.ReadOnlyField(source='user_id.id')
+    email = serializers.ReadOnlyField(source='user_id.email')
+    name = serializers.ReadOnlyField(source='user_id.name')
+    rolename = serializers.ReadOnlyField(source='user_id.roleid.rolename')
+    usrfullname = serializers.ReadOnlyField(source='user_id.usrfullname')
+    usrdob = serializers.ReadOnlyField(source='user_id.usrdob')
+    usrfaculty = serializers.ReadOnlyField(source='user_id.usrfaculty')
 
+    class Meta:
+        model = ClassUser
+        fields = ['class_user_id', 'class_id', 'status', 'time_regis', 'time_approve', 'id', 'email', 'name', 'rolename', 'usrfullname', 'usrdob', 'usrfaculty']
 
 class ConfirmUserSerializer(serializers.Serializer):
     id_user =serializers.IntegerField(required=True)

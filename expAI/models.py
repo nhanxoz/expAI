@@ -52,6 +52,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     usrdob = models.DateField(db_column='usrDoB', blank=True, null=True)  # Field name made lowercase.
     usrfaculty = models.CharField(db_column='usrFaculty', max_length=45, blank=True, null=True)  # Field name made lowercase.
     chose_class = models.BooleanField('User chose class', default= False)
+    usrclass = models.CharField(db_column='usrClass', blank=True, null=True, max_length=45)
     objects = UserManager()
 
     USERNAME_FIELD = 'email'
@@ -80,6 +81,19 @@ class Datasets(models.Model):
     datasetcreatedtime = models.DateTimeField(db_column='datasetCreatedTime', auto_now_add=True, blank=True)  # Field name made lowercase.
     datasetdescription = models.CharField(db_column='datasetDescription', max_length=200  , blank=True, null=True)  # Field name made lowercase.
     datasetowner = models.ForeignKey("User", models.DO_NOTHING, db_column='datasetOwner', blank=True, null=True)
+    def get_datasetowner_name(self):
+        """
+        Returns the name of the dataset owner.
+        """
+        if self.datasetowner:
+            return self.datasetowner.name
+        return None
+
+    def set_datasetowner_id(self, user_id):
+        """
+        Sets the dataset owner by user ID.
+        """
+        self.datasetowner_id = user_id
     class Meta:
         managed = True
         db_table = 'datasets'

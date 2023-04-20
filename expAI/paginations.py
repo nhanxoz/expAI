@@ -12,7 +12,7 @@ class LargeResultsSetPagination(PageNumberPagination):
             ('totalPages',self.page.paginator.num_pages),
             ('previous', self.get_previous_link()),
             ('results', data)
-
+            
         ]))
 
 class StandardResultsSetPagination(PageNumberPagination):

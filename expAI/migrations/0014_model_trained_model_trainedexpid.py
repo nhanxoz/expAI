@@ -11,9 +11,5 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.AddField(
-            model_name='model_trained',
-            name='model_trainedexpid',
-            field=models.ForeignKey(blank=True, db_column='model_trainedExpID', null=True, on_delete=django.db.models.deletion.CASCADE, to='expAI.experiments'),
-        ),
+
     ]

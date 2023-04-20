@@ -24,10 +24,10 @@ SECRET_KEY = 'django-insecure-^s3%fj236opglcd4o)d@t4y$8#^8(xd@srp2=aavgd#yivi7q9
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
-CSRF_COOKIE_SAMESITE = 'None'
-CSRF_COOKIE_SECURE = True
-SESSION_COOKIE_SAMESITE = 'None'
-SESSION_COOKIE_SECURE = True
+# CSRF_COOKIE_SAMESITE = 'None'
+# CSRF_COOKIE_SECURE = True
+# SESSION_COOKIE_SAMESITE = 'None'
+# SESSION_COOKIE_SECURE = True
 AUTHENTICATION_BACKENDS = ['django.contrib.auth.backends.AllowAllUsersModelBackend']
 
 
@@ -105,7 +105,7 @@ DATABASES = {
         'NAME': './database.db'
     }
 }
-
+CSRF_TRUSTED_ORIGINS = ['http://42.96.42.99:3000']
 # DATABASES = {
 #     'default': {
 #         'ENGINE': 'django.db.backends.mysql',
@@ -177,7 +177,8 @@ if DEBUG:
  # If this is used then `CORS_ALLOWED_ORIGINS` will not have any effect
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGINS = [
-    'http://127.0.0.1:3000',
+    # 'http://127.0.0.1:3000',
+    'http://42.96.42.99:3000'
 ] # If this is used, then not need to use `CORS_ALLOW_ALL_ORIGINS = True`
 
 AUTH_USER_MODEL = 'expAI.User'

@@ -32,6 +32,7 @@ router.register(r'models',views.ModelsViewSet, basename="LK")
 router.register(r'classes',views.ClassesViewSet, basename="LK")
 router.register(r'classuser',views.DeleteClassUserView, basename="expai")
 router.register(r'model_trained',views.Model_trainedViewSet, basename="LK")
+# router.register(r'danh-sach-hv-chua-co-lop',views.DanhSachHocVienChuaCoLop, basename="LK")
 # The API URLs are now determined automatically by the router.
 urlpatterns = [
     path('', include(router.urls)),
@@ -52,5 +53,12 @@ urlpatterns = [
     re_path(r'^upload-datasets-zip/$', views.DatasetsUploadView.as_view(), name='c'),
     re_path(r'^upload-file/$', views.FileUploadView.as_view(), name='c'),
     re_path(r'^upload-files/$', views.FilesUploadView.as_view(), name='c'),
-    re_path(r'^test-download-files/$', views.DownloadView.as_view(), name='c'),
+    re_path(r'^download-report/$', views.DownloadView.as_view(), name='c'),
+    re_path(r'^thongke-role/$', views.ThongkeRole.as_view(), name='disable-account'),
+    re_path(r'^ds-hv-chuacolop/$', views.DanhSachHocVienChuaCoLop.as_view(), name='ds-hv-chuacolop'),
+    
+    re_path(r'^deny-user-request-class/$', views.DenyToClassView.as_view(), name='disable-account'),
+    path('danh-sach-lop-gv-phu-trach/', views.DanhSachLopGvPhuTrach.as_view(), name='danh_sach_lop_gv_phu_trach'),
+    path('danh-sach-lop-gv-phu-trach/<int:pk>/', views.DanhSachLopGvPhuTrach.as_view(), name='danh_sach_sinh_vien_trong_lop'),
+
 ]
