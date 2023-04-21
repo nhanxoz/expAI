@@ -95,6 +95,7 @@ class DatasetsViewSet(viewsets.ModelViewSet):
         print(a, b, c, d)
         if usr.roleid.rolename == "ADMIN":
             queryset = Datasets.objects.all()
+            
         elif usr.roleid.rolename == "STUDENT":
             queryset = Datasets.objects.filter(
                 datasettype=1) | Datasets.objects.filter(datasetowner=self.request.user)
@@ -125,9 +126,10 @@ class DatasetsViewSet(viewsets.ModelViewSet):
     def destroy(self, request, *args, **kwargs):
         try:
             instance = self.get_object()
-
-            import shutil
-            shutil.rmtree(f'datasets/{instance.datasetfolderurl}')
+            try:
+                import shutil
+                shutil.rmtree(f'datasets/{instance.datasetfolderurl}')
+            except:...
             self.perform_destroy(instance)
         except:
             return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR)
