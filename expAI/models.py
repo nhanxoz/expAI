@@ -142,7 +142,7 @@ class Models(models.Model):
     modelsoftlibid = models.IntegerField(db_column='modelSoftLibID', blank=True, null=True)  # Field name made lowercase.
     pretrainpath = models.CharField(db_column='pretrainpath',max_length=1000,null=True,blank=True)
     default_json_Paramsconfigs = models.CharField(db_column='jsonStringParams', max_length=2500, blank=True, null=True)
-
+    modelowner = models.ForeignKey('User', models.CASCADE, db_column='modelowner', blank=True, null=True)  # Field name made lowercase.
     class Meta:
         managed = True
         db_table = 'models'
