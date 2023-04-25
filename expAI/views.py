@@ -63,7 +63,7 @@ class DatasetsViewSet(viewsets.ModelViewSet):
     """
     authentication_classes = (CsrfExemptSessionAuthentication,)
     serializer_class = DatasetsSerializer
-    permission_classes = [IsOwner | IsAdmin]
+    # permission_classes = [IsOwner | IsAdmin]
     pagination_class = LargeResultsSetPagination
     datasetname = openapi.Parameter(
         'datasetname', openapi.IN_QUERY, description='Tên bộ dữ liệu', type=openapi.TYPE_STRING)
@@ -74,6 +74,7 @@ class DatasetsViewSet(viewsets.ModelViewSet):
         usr = self.request.user
         if (usr.roleid.rolename == "STUDENT") and (request.data["datasettype"]==2):
             return Response("Học viên không được tạo public")
+        request.data["datasetowner"]=usr.id
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
@@ -1399,7 +1400,7 @@ class DatasetsUploadView(views.APIView):
 class ModelsViewSet(viewsets.ModelViewSet):
     queryset = Models.objects.all()
     serializer_class = ModelsSerializer
-    permission_classes = [IsOwner | IsAdmin]
+    # permission_classes = [IsOwner | IsAdmin]
     authentication_classes = (CsrfExemptSessionAuthentication,)
     def create(self, request, *args, **kwargs):
         usr = self.request.user
@@ -1433,13 +1434,13 @@ class ModelsViewSet(viewsets.ModelViewSet):
 
         return Response(serializer.data)
 
-    def get_permissions(self):
-        if self.action == 'get_list_model' or self.action == 'list':
-            permission_classes = [IsStudent | IsTeacher | IsAdmin]
-        else:
-            permission_classes = [IsTeacher]
+    # def get_permissions(self):
+    #     if self.action == 'get_list_model' or self.action == 'list':
+    #         permission_classes = [IsStudent | IsTeacher | IsAdmin]
+    #     else:
+    #         permission_classes = [IsTeacher]
 
-        return [permission() for permission in permission_classes]
+    #     return [permission() for permission in permission_classes]
 
 
 class ModelsUploadView(views.APIView):
