@@ -33,3 +33,5 @@ facenet-pytorch
 Pillow
 opencv-python
 numpy
+arcface
+astropy

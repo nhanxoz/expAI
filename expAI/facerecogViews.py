@@ -27,7 +27,6 @@ class FaceViewSet(viewsets.ModelViewSet):
     serializer_class = FaceSerializer
     authentication_classes = (CsrfExemptSessionAuthentication,)
     pagination_class = LargeResultsSetPagination
-    permission_classes = [IsOwnerExp | IsAdmin]
     authentication_classes = (CsrfExemptSessionAuthentication,)
 
     def list(self, request, *args, **kwargs):
@@ -71,20 +70,20 @@ class FaceViewSet(viewsets.ModelViewSet):
     # @swagger_auto_schema(method='get', manual_parameters=[id_softlib,keyword], responses={404: 'Not found', 200: 'ok', 201: FaceSerializer})
     # @action(methods=['GET'], detail=False, url_path='search_exp')
 
-    def create(self, request, *args, **kwargs):
+    # def create(self, request, *args, **kwargs):
 
-        if request.user.id == None:
-            return Response(status=status.HTTP_401_UNAUTHORIZED)
-        serializer = FaceSerializer(data=request.data)
-        if serializer.is_valid():
-            new_face = serializer.save()
-            new_face.expcreatorid = request.user
-            new_face.save()
-            serializer = FaceSerializer(new_face, many=False)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return JsonResponse({
-            'message': 'Create a new face unsuccessful!'
-        }, status=status.HTTP_400_BAD_REQUEST)
+    #     if request.user.id == None:
+    #         return Response(status=status.HTTP_401_UNAUTHORIZED)
+    #     serializer = FaceSerializer(data=request.data)
+    #     if serializer.is_valid():
+    #         new_face = serializer.save()
+    #         new_face.expcreatorid = request.user
+    #         new_face.save()
+    #         serializer = FaceSerializer(new_face, many=False)
+    #         return Response(serializer.data, status=status.HTTP_201_CREATED)
+    #     return JsonResponse({
+    #         'message': 'Create a new face unsuccessful!'
+    #     }, status=status.HTTP_400_BAD_REQUEST)
 
 class FaceUploadView(views.APIView):
 
@@ -138,15 +137,15 @@ class FaceUploadView(views.APIView):
             os.remove(path+file_obj.name)
             response = {
             'status': 'success',
-            'code': status.HTTP_200_OK,
-            'message': 'no face in image'
+            'code': status.HTTP_400_BAD_REQUEST,
+            'message': 'Không phát hiện khuôn mặt nào trong ảnh'
         }
         else:
             os.remove(path+file_obj.name)
             response = {
             'status': 'success',
-            'code': status.HTTP_200_OK,
-            'message': '> 1 face in image'
+            'code': status.HTTP_400_BAD_REQUEST,
+            'message': 'Phát hiện nhiều hơn một khuôn mặt trong ảnh'
         }
 
         return Response(response)
