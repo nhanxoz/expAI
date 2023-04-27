@@ -267,3 +267,8 @@ class ClassUserSerializer(serializers.ModelSerializer):
 class ConfirmUserSerializer(serializers.Serializer):
     id_user =serializers.IntegerField(required=True)
     status = serializers.BooleanField(required=True)
+
+class FaceSerializer(ModelSerializer):
+    class Meta:
+        model = Face
+        fields = '__all__'

@@ -293,6 +293,22 @@ from django.urls import reverse
 from django_rest_passwordreset.signals import reset_password_token_created
 from django.core.mail import send_mail  
 
+class Face(models.Model):
+    Face_id = models.AutoField(db_column='faceID',primary_key=True)
+    image_path = models.CharField(db_column='imagePath',blank=True,max_length=2000)
+    name = models.CharField(db_column='name',max_length=500,blank=True,null=True)
+    infor = models.CharField(db_column='infor',max_length=1000,null=True,blank=True)
+    x1 = models.FloatField(default=0)
+    y1 = models.FloatField(default=0)
+    x2 = models.FloatField(default=0)
+    y2 = models.FloatField(default=0)
+    emb = models.BinaryField(max_length=2048)
+    creatorID  = models.ForeignKey('User', models.CASCADE, db_column='faceCreatorID')
+    time = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        managed = True
+        db_table = 'Face'
 
 @receiver(reset_password_token_created)
 def password_reset_token_created(sender, instance, reset_password_token, *args, **kwargs):

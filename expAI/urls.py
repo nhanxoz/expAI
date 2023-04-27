@@ -32,6 +32,7 @@ router.register(r'models',views.ModelsViewSet, basename="LK")
 router.register(r'classes',views.ClassesViewSet, basename="LK")
 router.register(r'classuser',views.DeleteClassUserView, basename="expai")
 router.register(r'model_trained',views.Model_trainedViewSet, basename="LK")
+router.register(r'facerecog',facerecogViews.FaceViewSet, basename="expAIs")
 # router.register(r'danh-sach-hv-chua-co-lop',views.DanhSachHocVienChuaCoLop, basename="LK")
 # The API URLs are now determined automatically by the router.
 urlpatterns = [
@@ -53,6 +54,7 @@ urlpatterns = [
     re_path(r'^upload-datasets-zip/$', views.DatasetsUploadView.as_view(), name='c'),
     re_path(r'^upload-file/$', views.FileUploadView.as_view(), name='c'),
     re_path(r'^upload-files/$', views.FilesUploadView.as_view(), name='c'),
+        re_path(r'^upload-face/$', facerecogViews.FaceUploadView.as_view(), name='uploadface'),
     re_path(r'^download-report/$', views.DownloadView.as_view(), name='c'),
     re_path(r'^thongke-role/$', views.ThongkeRole.as_view(), name='disable-account'),
     re_path(r'^ds-hv-chuacolop/$', views.DanhSachHocVienChuaCoLop.as_view(), name='ds-hv-chuacolop'),
