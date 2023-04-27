@@ -82,12 +82,14 @@ class DatasetsViewSet(viewsets.ModelViewSet):
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
     def get_queryset(self):
+        print("a")
         usr = self.request.user
         try:
             usr = User.objects.get(email=usr.email)
         except:
             print("User not authorized") 
             return
+        print("b")
         a = ClassUser.objects.filter(status=1).filter(user_id=usr.id)
         b = list(a.values_list('class_id', flat=True))
         c = sum([list(ClassUser.objects.filter(status=1).filter(
