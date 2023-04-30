@@ -35,3 +35,6 @@ opencv-python
 numpy
 arcface
 astropy
+beautifulsoup4
+retina-face
+Cython

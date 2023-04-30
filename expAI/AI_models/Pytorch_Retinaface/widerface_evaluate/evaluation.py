@@ -11,7 +11,8 @@ import pickle
 import argparse
 import numpy as np
 from scipy.io import loadmat
-from bbox import bbox_overlaps
+from expAI.AI_models.Pytorch_Retinaface.widerface_evaluate.bbox import bbox_overlaps
+#from bbox import bbox_overlaps
 from IPython import embed
 
 
@@ -279,16 +280,16 @@ def evaluation(pred, gt_path, iou_thresh=0.5):
     print("Medium Val AP: {}".format(aps[1]))
     print("Hard   Val AP: {}".format(aps[2]))
     print("=================================================")
+    return aps
 
+# if __name__ == '__main__':
 
-if __name__ == '__main__':
+#     parser = argparse.ArgumentParser()
+#     parser.add_argument('-p', '--pred', default="./widerface_txt/")
+#     parser.add_argument('-g', '--gt', default='./ground_truth/')
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-p', '--pred', default="./widerface_txt/")
-    parser.add_argument('-g', '--gt', default='./ground_truth/')
-
-    args = parser.parse_args()
-    evaluation(args.pred, args.gt)
+#     args = parser.parse_args()
+#     evaluation(args.pred, args.gt)
 
 
 

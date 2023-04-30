@@ -8,7 +8,9 @@ from expAI.AI_models.Pytorch_Retinaface.layers.modules import MultiBoxLoss
 from expAI.AI_models.Pytorch_Retinaface.layers.functions.prior_box import PriorBox
 from expAI.AI_models.Pytorch_Retinaface.models.retinaface import RetinaFace
 from expAI.AI_models.Pytorch_Retinaface.utils.box_utils import decode, decode_landm
+from expAI.AI_models.Pytorch_Retinaface.utils.timer import Timer
 from expAI.AI_models.Pytorch_Retinaface.utils.nms.py_cpu_nms import py_cpu_nms
+from expAI.AI_models.Pytorch_Retinaface.widerface_evaluate.evaluation import evaluation as cacular_mAP
 
 import time
 import datetime
@@ -16,6 +18,8 @@ import math
 import json
 
 from expAI.models import *
+import cv2
+import numpy as np
 
 
 
@@ -169,10 +173,146 @@ def train(para_id,dataset_path,json_config):
     # torch.save(net.state_dict(), save_folder + 'Final_Retinaface.pth')
 
 def test(result_id,dataset_path):
+    print("vafo tesst")
     
     print(result_id)
     print(dataset_path)
-    return float(0.9)
+    _ressult = Results.objects.get(pk = result_id)
+    _para = Paramsconfigs.objects.get(pk=_ressult.resultconfigid.pk)
+    trained_model = str(_para.configaftertrainmodelpath)
+
+    keep_top_k = 750
+
+
+    cfg = cfg_mnet
+    net = RetinaFace(cfg=cfg, phase = 'test')
+    net = load_model(net,trained_model, False)
+    net.eval()
+    cudnn.benchmark = True
+    device = torch.device("cuda")
+    net = net.to(device)
+    data = Datasets.objects.get(pk = _ressult.resulttestingdataset.pk)
+    test_data_path = './datasets/' + str(data.datasetfolderurl)
+    # testing dataset
+    testset_folder = test_data_path + '/images/'
+    testset_list = testset_folder[:-7] + "wider_val.txt"
+
+    with open(testset_list, 'r') as fr:
+        test_dataset = fr.read().split()
+    num_images = len(test_dataset)
+
+    _t = {'forward_pass': Timer(), 'misc': Timer()}
+    for i, img_name in enumerate(test_dataset):
+        image_path = testset_folder + img_name
+        img_raw = cv2.imread(image_path, cv2.IMREAD_COLOR)
+        img = np.float32(img_raw)
+
+        # testing scale
+        target_size = 1600
+        max_size = 2150
+        im_shape = img.shape
+        im_size_min = np.min(im_shape[0:2])
+        im_size_max = np.max(im_shape[0:2])
+        resize = float(target_size) / float(im_size_min)
+        # prevent bigger axis from being more than max_size:
+        if np.round(resize * im_size_max) > max_size:
+            resize = float(max_size) / float(im_size_max)
+        if True:
+            resize = 1
+        if resize != 1:
+            img = cv2.resize(img, None, None, fx=resize, fy=resize, interpolation=cv2.INTER_LINEAR)
+        im_height, im_width, _ = img.shape
+        scale = torch.Tensor([img.shape[1], img.shape[0], img.shape[1], img.shape[0]])
+        img -= (104, 117, 123)
+        img = img.transpose(2, 0, 1)
+        img = torch.from_numpy(img).unsqueeze(0)
+        img = img.to(device)
+        scale = scale.to(device)
+
+        _t['forward_pass'].tic()
+        loc, conf, landms = net(img)  # forward pass
+        _t['forward_pass'].toc()
+        _t['misc'].tic()
+        priorbox = PriorBox(cfg, image_size=(im_height, im_width))
+        priors = priorbox.forward()
+        priors = priors.to(device)
+        prior_data = priors.data
+        boxes = decode(loc.data.squeeze(0), prior_data, cfg['variance'])
+        boxes = boxes * scale / resize
+        boxes = boxes.cpu().numpy()
+        scores = conf.squeeze(0).data.cpu().numpy()[:, 1]
+        landms = decode_landm(landms.data.squeeze(0), prior_data, cfg['variance'])
+        scale1 = torch.Tensor([img.shape[3], img.shape[2], img.shape[3], img.shape[2],
+                               img.shape[3], img.shape[2], img.shape[3], img.shape[2],
+                               img.shape[3], img.shape[2]])
+        scale1 = scale1.to(device)
+        landms = landms * scale1 / resize
+        landms = landms.cpu().numpy()
+
+        # ignore low scores
+        inds = np.where(scores > 0.02)[0]
+        boxes = boxes[inds]
+        landms = landms[inds]
+        scores = scores[inds]
+
+        # keep top-K before NMS
+        order = scores.argsort()[::-1]
+        # order = scores.argsort()[::-1][:args.top_k]
+        boxes = boxes[order]
+        landms = landms[order]
+        scores = scores[order]
+
+        # do NMS
+        dets = np.hstack((boxes, scores[:, np.newaxis])).astype(np.float32, copy=False)
+        keep = py_cpu_nms(dets, 0.4)
+        # keep = nms(dets, args.nms_threshold,force_cpu=args.cpu)
+        dets = dets[keep, :]
+        landms = landms[keep]
+
+        # keep top-K faster NMS
+        # dets = dets[:args.keep_top_k, :]
+        # landms = landms[:args.keep_top_k, :]
+
+        dets = np.concatenate((dets, landms), axis=1)
+        _t['misc'].toc()
+
+        # --------------------------------------------------------------------
+        save_folder = test_data_path + '/widerface_evaluate/widerface_txt/'
+        if not os.path.exists(save_folder):
+            os.makedirs(save_folder)
+        save_name = save_folder + img_name[:-4] + ".txt"
+        print(save_name)
+        dirname = os.path.dirname(save_name)
+        if not os.path.isdir(dirname):
+            os.makedirs(dirname)
+        print(dirname)
+        with open(save_name, "w") as fd:
+            bboxs = dets
+            file_name = os.path.basename(save_name)[:-4] + "\n"
+            bboxs_num = str(len(bboxs)) + "\n"
+            fd.write(file_name)
+            fd.write(bboxs_num)
+            for box in bboxs:
+                x = int(box[0])
+                y = int(box[1])
+                w = int(box[2]) - int(box[0])
+                h = int(box[3]) - int(box[1])
+                confidence = str(box[4])
+                line = str(x) + " " + str(y) + " " + str(w) + " " + str(h) + " " + confidence + " \n"
+                fd.write(line)
+
+        print('im_detect: {:d}/{:d} forward_pass_time: {:.4f}s misc: {:.4f}s'.format(i + 1, num_images, _t['forward_pass'].average_time, _t['misc'].average_time))
+    aps = cacular_mAP(test_data_path + '/widerface_evaluate/widerface_txt/',test_data_path + '/ground_truth/')
+    _ressult.resultaccuracy = aps[1]
+    detail_ap = {}
+    detail_ap['easy ap'] = aps[0]
+    detail_ap['medium ap'] = aps[1]
+    detail_ap['hard ap'] = aps[2]
+    _ressult.resultdetail = json.dumps(detail_ap)
+    _ressult.save()
+
+
+
 
 
 def check_keys(model, pretrained_state_dict):
@@ -181,7 +321,7 @@ def check_keys(model, pretrained_state_dict):
     used_pretrained_keys = model_keys & ckpt_keys
     unused_pretrained_keys = ckpt_keys - model_keys
     missing_keys = model_keys - ckpt_keys
-    print('Missing keys:{}'.format(len(missing_keys)))
+    print('Missing keys:{}'.format(len(missing_keys))) 
     print('Unused checkpoint keys:{}'.format(len(unused_pretrained_keys)))
     print('Used keys:{}'.format(len(used_pretrained_keys)))
     assert len(used_pretrained_keys) > 0, 'load NONE from pretrained checkpoint'
