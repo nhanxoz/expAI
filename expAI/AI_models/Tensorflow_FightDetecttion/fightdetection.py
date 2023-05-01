@@ -532,5 +532,5 @@ def process_alldata_test(indir):
         
     return data, target
 
-if __name__ == "__main__":
-    predict()
+# if __name__ == "__main__":
+#     predict()
