@@ -23,7 +23,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-^s3%fj236opglcd4o)d@t4y$8#^8(xd@srp2=aavgd#yivi7q9'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = True
 # CSRF_COOKIE_SAMESITE = 'None'
 # CSRF_COOKIE_SECURE = True
 # SESSION_COOKIE_SAMESITE = 'None'
@@ -155,6 +155,10 @@ STATIC_URL = 'static/'
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.1/ref/settings/#default-auto-field
+
+MEDIA_URL ='/media/'
+
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media/')
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 

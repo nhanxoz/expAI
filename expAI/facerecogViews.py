@@ -182,7 +182,7 @@ class FaceUploadView(views.APIView):
         file_obj = request.FILES['file']
         person_name = request.query_params.get('name')
         new_name = uuid.uuid4()
-        path = f"./static/faces/{new_name}/"
+        path = f"./media/faces/{new_name}/"
         if not os.path.exists(path):
             os.makedirs(path)
         with open(path + file_obj.name, 'wb+') as destination:
@@ -213,11 +213,12 @@ class FaceUploadView(views.APIView):
             'code': status.HTTP_201_CREATED,
             'message': 'image uploaded successfully',
             'data': FaceSerializer(new_face,many=False).data
-        }
+            }
             face_save = cv2.imread(path+file_obj.name)[y1:y2,x1:x2]
             os.remove(path+file_obj.name)
-            cv2.imwrite(filename=path+file_obj.name,img=face_save)
-
+            cv2.imwrite(filename=path+str(new_face.Face_id)+'.png',img=face_save)
+            new_face.image_path = path+str(new_face.Face_id)+'.png'
+            new_face.save()
         elif l_face == 0 : 
             # The uploaded image doesn't contain a face, so we reject it
             os.remove(path+file_obj.name)
