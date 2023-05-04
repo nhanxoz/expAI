@@ -2,3 +2,5 @@
 weights/72/facenet.pth
 weights/77/model.h5
 expAI/AI_models/Pytorch_Retinaface/weights/Resnet50_Final.pth
+datasets/*
+expAI/AI_models/Pytorch_Retinaface/data/widerface/*

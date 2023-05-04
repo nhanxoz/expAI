@@ -83,7 +83,13 @@ def train(para_id,dataset_path,json_config):
     net = RetinaFace(cfg=cfg)
     print("Printing net...")
     print(net)
-    net = net.cuda()
+    if gpu_train:
+        if not torch.cuda.is_available():
+            gpu_train = False
+    if gpu_train:
+        net = net.cuda()
+    else:
+        net = net.cpu()
     cudnn.benchmark = True
     optimizer = optim.SGD(net.parameters(), lr=initial_lr, momentum=momentum, weight_decay=weight_decay)
     criterion = MultiBoxLoss(num_classes, 0.35, True, 0, True, 7, 0.35, False)
@@ -91,7 +97,10 @@ def train(para_id,dataset_path,json_config):
     priorbox = PriorBox(cfg, image_size=(img_dim, img_dim))
     with torch.no_grad():
         priors = priorbox.forward()
-        priors = priors.cuda()
+        if gpu_train:
+            priors = priors.cuda()
+        else:
+            priors = priors.cpu()
     net.train()
     epoch = 0 + args_resume_epoch
     print('Loading Dataset...')
@@ -126,8 +135,12 @@ def train(para_id,dataset_path,json_config):
 
         # load train data
         images, targets = next(batch_iterator)
-        images = images.cuda()
-        targets = [anno.cuda() for anno in targets]
+        if gpu_train:
+            images = images.cuda()
+            targets = [anno.cuda() for anno in targets]
+        else:
+            images = images.cpu()
+            targets = [anno.cpu() for anno in targets]
 
         # forward
         out = net(images)
@@ -148,7 +161,7 @@ def train(para_id,dataset_path,json_config):
               epoch_size, iteration + 1, max_iter, loss_l.item(), loss_c.item(), loss_landm.item(), lr, batch_time, str(datetime.timedelta(seconds=eta))))
 
         _para = Paramsconfigs.objects.get(pk=para_id)
-        if _para.trainningstatus == 0:
+        if _para.trainningstatus == 0 or (iteration+1) == max_iter:
             _new_result = Trainningresults()
             _new_result.configid = _para
             _new_result.accuracy = 0
@@ -174,7 +187,6 @@ def train(para_id,dataset_path,json_config):
 
 def test(result_id,dataset_path):
     print("vafo tesst")
-    
     print(result_id)
     print(dataset_path)
     _ressult = Results.objects.get(pk = result_id)
@@ -186,11 +198,18 @@ def test(result_id,dataset_path):
 
     cfg = cfg_mnet
     net = RetinaFace(cfg=cfg, phase = 'test')
-    net = load_model(net,trained_model, False)
+    if torch.cuda.is_available():
+        net = load_model(net,trained_model, False)
+    else:
+        net = load_model(net,trained_model, True)
     net.eval()
     cudnn.benchmark = True
-    device = torch.device("cuda")
+    if torch.cuda.is_available():
+        device = torch.device("cuda")
+    else:
+        device = torch.device("cpu")
     net = net.to(device)
+
     data = Datasets.objects.get(pk = _ressult.resulttestingdataset.pk)
     test_data_path = './datasets/' + str(data.datasetfolderurl)
     # testing dataset
@@ -358,10 +377,16 @@ def predict(pre_id,trained_model):
 
     cfg = cfg_mnet
     net = RetinaFace(cfg=cfg, phase = 'test')
-    net = load_model(net,trained_model, False)
+    if torch.cuda.is_available():
+        net = load_model(net,trained_model, False)
+    else:
+        net = load_model(net,trained_model,True)
     net.eval()
     cudnn.benchmark = True
-    device = torch.device("cuda")
+    if torch.cuda.is_available():
+        device = torch.device("cuda")
+    else:
+        device = torch.device("cpu")
     net = net.to(device)
 
 

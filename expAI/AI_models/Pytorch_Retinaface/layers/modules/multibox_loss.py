@@ -4,7 +4,7 @@ import torch.nn.functional as F
 from torch.autograd import Variable
 from expAI.AI_models.Pytorch_Retinaface.utils.box_utils import match, log_sum_exp
 from expAI.AI_models.Pytorch_Retinaface.data import cfg_mnet
-GPU = cfg_mnet['gpu_train']
+GPU = torch.cuda.is_available()
 
 class MultiBoxLoss(nn.Module):
     """SSD Weighted Loss Function
@@ -74,7 +74,9 @@ class MultiBoxLoss(nn.Module):
             conf_t = conf_t.cuda()
             landm_t = landm_t.cuda()
 
-        zeros = torch.tensor(0).cuda()
+            zeros = torch.tensor(0).cuda()
+        else:
+            zeros = torch.tensor(0)
         # landm Loss (Smooth L1)
         # Shape: [batch,num_priors,10]
         pos1 = conf_t > zeros
