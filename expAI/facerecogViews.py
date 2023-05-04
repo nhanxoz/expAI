@@ -63,10 +63,13 @@ class FaceViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
     
     web_url = openapi.Parameter('web_url', openapi.IN_QUERY, description='web URL', type=openapi.TYPE_STRING)
-    @swagger_auto_schema(method='get', manual_parameters=[web_url], responses={404: 'Not found', 200: 'ok', 201: FaceSerializer})
+    score = openapi.Parameter('score', openapi.IN_QUERY, description='score', type=openapi.TYPE_NUMBER)
+    @swagger_auto_schema(method='get', manual_parameters=[web_url,score], responses={404: 'Not found', 200: 'ok', 201: FaceSerializer})
     @action(methods=['GET'], detail=False, url_path='search_by_face')
     def search_face(self, request):
         web_url = request.query_params.get('web_url')
+        score = request.query_params.get('score')
+        score = float(score)
         if request.user.id == None:
             return Response(status=status.HTTP_401_UNAUTHORIZED)
         usr = request.user
@@ -92,42 +95,42 @@ class FaceViewSet(viewsets.ModelViewSet):
         return_data = []
         face_rec = ArcFace.ArcFace()
         for url,img in zip(image_urls,image_crawleds):
+            dict = {}
+            dict['url'] = url
+            print(url)
             try:
-                dict = {}
-                dict['url'] = url
-                print(url)
-                try:
-                    faces_founds = get_faces_by_img(img)
-                except:
-                    faces_founds = []
-                dict['number_face'] = len(faces_founds)
-                arr_face_found = []
-                for face_found in faces_founds:
-                    face_dict = {}
-                    x1= face_found['x1']
-                    y1= face_found['y1']
-                    x2= face_found['x2']
-                    y2= face_found['y2']
-                    if x1 < 0:
-                        x1 = 0
-                    if y1 < 0:
-                        y1 =0
-                    # cv2.imwrite('test.jpg',img[box[1]:box[1]+box[3],box[0]:box[0]+box[2]])
-                    face_dict['box'] = [x1,y1,x2,y2]
-                    emb_f = face_rec.calc_emb(img[y1:y2,x1:x2])
-                    for face_point in face_for_search:
-                        distance = face_rec.get_distance_embeddings(emb_f, np.frombuffer(face_point.emb, dtype=np.float32))
-                        if distance < 1.5:
-                            face_dict['name'] = face_point.name
-                            face_dict['score'] = distance
-                            break
-                        else:
-                            face_dict['name'] = 'unknow'
-                    arr_face_found.append(face_dict)
-                dict['arr_face'] = arr_face_found
-                return_data.append(dict)
+                faces_founds = get_faces_by_img(img)
             except:
-                continue
+                faces_founds = []
+            dict['number_face'] = len(faces_founds)
+            print(dict['number_face'])
+            arr_face_found = []
+            for face_found in faces_founds:
+                face_dict = {}
+                x1= face_found['x1']
+                y1= face_found['y1']
+                x2= face_found['x2']
+                y2= face_found['y2']
+                if x1 < 0:
+                    x1 = 0
+                if y1 < 0:
+                    y1 =0
+                # cv2.imwrite('test.jpg',img[box[1]:box[1]+box[3],box[0]:box[0]+box[2]])
+                face_dict['box'] = [x1,y1,x2,y2]
+                emb_f = face_rec.calc_emb(img[y1:y2,x1:x2])
+                for face_point in face_for_search:
+                    print('-------------------------------------------------------')
+                    distance = cosine_distance(emb_f, np.frombuffer(face_point.emb, dtype=np.float32))
+                    print(distance)
+                    if distance > score:
+                        face_dict['name'] = face_point.name
+                        face_dict['score'] = distance
+                        break
+                    else:
+                        face_dict['name'] = 'unknow'
+                arr_face_found.append(face_dict)
+            dict['arr_face'] = arr_face_found
+            return_data.append(dict)
 
 
         return Response({
@@ -349,3 +352,9 @@ def crawl_Web_URL(url):
         except:
             continue
     return image_urls,image_raw
+
+def cosine_distance(v1, v2):
+    dot_product = np.dot(v1, v2)
+    norm_v1 = np.linalg.norm(v1)
+    norm_v2 = np.linalg.norm(v2)
+    return dot_product / (norm_v1 * norm_v2)
