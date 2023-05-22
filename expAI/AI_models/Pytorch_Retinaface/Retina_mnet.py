@@ -391,7 +391,7 @@ def predict(pre_id,trained_model):
 
 
     _pre = Predict.objects.get(pk=pre_id)
-    result_path = str(_pre.inputpath)[:9] + 'predict_result' + str(_pre.inputpath)[21:]
+    result_path = str(_pre.inputpath)[:8] + 'predict_result' + str(_pre.inputpath)[20:]
     if not os.path.exists(result_path):
         os.makedirs(result_path)
 
@@ -478,8 +478,8 @@ def predict(pre_id,trained_model):
 
             dets = np.concatenate((dets, landms), axis=1)
             for b in dets:
-                if b[4] < 0.6:
-                    continue
+                # if b[4] < 0.2:
+                #     continue
                 text = "{:.4f}".format(b[4])
                 b = list(map(int, b))
                 cv2.rectangle(img_raw, (b[0], b[1]), (b[2], b[3]), (0, 0, 255), 2)

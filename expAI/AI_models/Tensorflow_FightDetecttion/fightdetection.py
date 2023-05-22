@@ -160,7 +160,7 @@ def test(ressult_id,dataset_path):
 
 def predict(pre_id,trained_model):
     _pre = Predict.objects.get(pk=pre_id)
-    result_path = str(_pre.inputpath)[:9] + 'predict_result' + str(_pre.inputpath)[21:]
+    result_path = str(_pre.inputpath)[:8] + 'predict_result' + str(_pre.inputpath)[20:]
     if not os.path.exists(result_path):
         os.makedirs(result_path)
     _pre.outputpath = result_path

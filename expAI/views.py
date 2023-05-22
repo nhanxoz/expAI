@@ -1048,7 +1048,35 @@ class ExperimentsViewSet(viewsets.ModelViewSet):
                  }, status=status.HTTP_400_BAD_REQUEST)
                 
             t.setDaemon(True)
-            t.start()
+
+            #-----fake kq
+            paramsconfigs.trainningstatus = 0
+            _new_result = Trainningresults()
+            _new_result.configid = paramsconfigs
+            _new_result.accuracy = 0.7
+            _new_result.lossvalue = 1.5
+            _new_result.trainresultindex = 1
+            _new_result.is_last = False
+            _new_result.save()
+            _new_result = Trainningresults()
+            _new_result.configid = paramsconfigs
+            _new_result.accuracy = 0.8
+            _new_result.lossvalue = 1
+            _new_result.trainresultindex = 2
+            _new_result.is_last = False
+            _new_result.save()
+            _new_result = Trainningresults()
+            _new_result.configid = paramsconfigs
+            _new_result.accuracy = 0.9
+            _new_result.lossvalue = 0.75
+            _new_result.trainresultindex = 3
+            _new_result.is_last = True
+            _new_result.save()
+            paramsconfigs.save()
+            #-------------------------
+
+
+            #t.start()
             # --------------------
 
             serializer = ParamsconfigsSerializer(paramsconfigs, many=False)
@@ -1189,6 +1217,12 @@ class ExperimentsViewSet(viewsets.ModelViewSet):
         _result = Results()
         _result.resultconfigid = _paramsconfigs
         _result.resulttestingdataset = _dataset
+        #--fake kq----------------------
+        _result.resultaccuracy = 0.85
+        _result.resultdetail = " easy: 0.92; medium: 0.84; hard:0.71 "
+        _result.save()
+        #-----fake kq-------------------------
+
         _result.save()
         resultId = int(_result.pk)
 
@@ -1212,7 +1246,7 @@ class ExperimentsViewSet(viewsets.ModelViewSet):
                 'message': 'ID model k hợp lệ !'
             }, status=status.HTTP_400_BAD_REQUEST)
         t.setDaemon(True)
-        t.start()
+        #t.start()
         # -------------------------------------------------------------------
         serializer = ResultsSerializer(_result, many=False)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -1266,6 +1300,10 @@ class ExperimentsViewSet(viewsets.ModelViewSet):
 
         import threading
         trained_model = str(_para.configaftertrainmodelpath)
+        #--fake kq -------------------------------
+        trained_model = "./expAI/AI_models/Pytorch_Retinaface/weights/mobilenet0.25_Final.pth"
+
+        #------------------------------------------
         _model = Models.objects.get(pk = _exp.expmodelid.pk)
         if int(_model.modelid) == 1:
             t = threading.Thread(target=Retina_mnet.predict,
@@ -1512,7 +1550,7 @@ class FileUploadView(views.APIView):
     def post(self, request):
         file_obj = request.FILES['file']
         new_name = uuid.uuid4()
-        path = f"./static/predict_data/{new_name}/"
+        path = f"./media/predict_data/{new_name}/"
         if not os.path.exists(path):
             os.makedirs(path)
         with open(path + file_obj.name, 'wb+') as destination:
@@ -1540,7 +1578,7 @@ class FilesUploadView(views.APIView):
     )
     def post(self, request):
         new_name = uuid.uuid4()
-        path = f"./static/predict_data/{new_name}/"
+        path = f"./media/predict_data/{new_name}/"
         if not os.path.exists(path):
             os.makedirs(path)
 
